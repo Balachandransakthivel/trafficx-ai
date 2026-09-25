@@ -8,9 +8,10 @@ import { useTraffic } from '@/hooks/useTraffic';
 interface Props {
   title: string;
   onMenuPress: () => void;
+  onNotificationsPress: () => void;
 }
 
-export const AppHeader = memo(({ title, onMenuPress }: Props) => {
+export const AppHeader = memo(({ title, onMenuPress, onNotificationsPress }: Props) => {
   const insets = useSafeAreaInsets();
   const { unreadAlerts, isLive } = useTraffic();
 
@@ -30,14 +31,14 @@ export const AppHeader = memo(({ title, onMenuPress }: Props) => {
           <View style={[styles.liveDot, isLive && styles.liveDotActive]} />
           <Text style={[styles.liveText, isLive && styles.liveTextActive]}>LIVE</Text>
         </View>
-        <View style={styles.alertBtn}>
+        <Pressable onPress={onNotificationsPress} style={styles.alertBtn} hitSlop={8}>
           <MaterialIcons name="notifications" size={22} color={Colors.textSecondary} />
           {unreadAlerts > 0 ? (
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{unreadAlerts > 9 ? '9+' : unreadAlerts}</Text>
             </View>
           ) : null}
-        </View>
+        </Pressable>
       </View>
     </View>
   );

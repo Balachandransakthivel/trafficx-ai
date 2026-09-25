@@ -20,10 +20,11 @@ export const Colors = {
   // Status
   green: '#22c55e',
   greenBg: '#22c55e18',
+  greenDim: '#22c55e22',
   yellow: '#f59e0b',
   yellowBg: '#f59e0b18',
   orange: '#f97316',
-  orangeBg: '#f97316 18',
+  orangeBg: '#f9731618',
   red: '#ef4444',
   redBg: '#ef444418',
   blue: '#3b82f6',
@@ -47,6 +48,7 @@ export const Spacing = {
 };
 
 export const Radius = {
+  xs: 4,
   sm: 6,
   md: 10,
   lg: 14,

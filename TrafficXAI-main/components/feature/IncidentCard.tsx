@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Incident } from '@/types/traffic';
 import { Colors, FontSize, FontWeight, Radius, Spacing } from '@/constants/theme';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -22,13 +22,15 @@ function timeAgo(ts: string): string {
 
 interface Props {
   incident: Incident;
+  onPress?: () => void;
+  onResolve?: () => void;
 }
 
-export const IncidentCard = memo(({ incident }: Props) => {
+export const IncidentCard = memo(({ incident, onPress, onResolve }: Props) => {
   const color = getStatusColor(incident.severity);
 
   return (
-    <View style={[styles.card, { borderLeftColor: color }]}>
+    <Pressable onPress={onPress} style={[styles.card, { borderLeftColor: color }]}>
       <View style={styles.header}>
         <Text style={styles.icon}>{INCIDENT_ICONS[incident.type]}</Text>
         <View style={styles.info}>
@@ -53,7 +55,7 @@ export const IncidentCard = memo(({ incident }: Props) => {
           <Text style={[styles.chipValue, { color: getStatusColor(incident.trafficImpact) }]}>{incident.trafficImpact}</Text>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 });
 

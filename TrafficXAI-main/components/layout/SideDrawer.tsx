@@ -12,15 +12,10 @@ const DRAWER_WIDTH = 280;
 
 const NAV_ITEMS = [
   { label: 'Dashboard', icon: 'dashboard', route: '/(tabs)/' },
-  { label: 'Live Traffic', icon: 'traffic', route: '/(tabs)/live-traffic' },
-  { label: 'AI Monitor', icon: 'videocam', route: '/(tabs)/ai-monitor' },
+  { label: 'Live Map', icon: 'map', route: '/(tabs)/live-traffic' },
   { label: 'Emergency', icon: 'local-hospital', route: '/(tabs)/emergency' },
   { label: 'Incidents', icon: 'warning', route: '/(tabs)/incidents' },
-  { label: 'Route Optimizer', icon: 'alt-route', route: '/(tabs)/routes' },
-  { label: 'Traffic Signals', icon: 'traffic', route: '/(tabs)/signals' },
-  { label: 'Predictions', icon: 'trending-up', route: '/(tabs)/predictions' },
-  { label: 'Analytics', icon: 'bar-chart', route: '/(tabs)/analytics' },
-  { label: 'Settings', icon: 'settings', route: '/(tabs)/settings' },
+  { label: 'Profile', icon: 'person', route: '/(tabs)/profile' },
 ];
 
 interface Props {
@@ -50,15 +45,13 @@ export const SideDrawer = memo(({ visible, onClose }: Props) => {
     ]).start();
   }, [visible]);
 
-  if (!visible && slideAnim.__getValue() === -DRAWER_WIDTH) return null;
-
   const navigate = (route: string) => {
     router.push(route as any);
     onClose();
   };
 
   return (
-    <View style={StyleSheet.absoluteFillObject} pointerEvents={visible ? 'auto' : 'none'}>
+    <View style={StyleSheet.absoluteFill} pointerEvents={visible ? 'auto' : 'none'}>
       <TouchableWithoutFeedback onPress={onClose}>
         <Animated.View style={[styles.overlay, { opacity: opacityAnim }]} />
       </TouchableWithoutFeedback>
@@ -109,7 +102,11 @@ export const SideDrawer = memo(({ visible, onClose }: Props) => {
 
 const styles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: 'rgba(0,0,0,0.6)',
   },
   drawer: {

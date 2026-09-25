@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Route } from '@/types/traffic';
 import { Colors, FontSize, FontWeight, Radius, Spacing } from '@/constants/theme';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -8,13 +8,14 @@ import { MaterialIcons } from '@expo/vector-icons';
 
 interface Props {
   route: Route;
+  onPress?: () => void;
 }
 
-export const RouteCard = memo(({ route }: Props) => {
+export const RouteCard = memo(({ route, onPress }: Props) => {
   const color = getStatusColor(route.trafficStatus);
 
   return (
-    <View style={[styles.card, route.recommended && styles.recommendedCard, route.blocked && styles.blockedCard]}>
+    <Pressable onPress={onPress} style={[styles.card, route.recommended && styles.recommendedCard, route.blocked && styles.blockedCard]}>
       {route.recommended ? (
         <View style={styles.recommendedBadge}>
           <MaterialIcons name="star" size={10} color="#fff" />
@@ -62,7 +63,7 @@ export const RouteCard = memo(({ route }: Props) => {
           </View>
         ))}
       </View>
-    </View>
+    </Pressable>
   );
 });
 

@@ -1,7 +1,7 @@
-// TRAFFICX AI — Dashboard (Main Screen)
+// TRAFFICX AI — Dashboard (Main Screen with Live Interactive Map)
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  ScrollView, View, Text, StyleSheet, Pressable, Animated
+  ScrollView, View, Text, StyleSheet, Pressable, Animated, Platform
 } from 'react-native';
 import { ScreenShell } from '@/components/layout/ScreenShell';
 import { StatCard } from '@/components/ui/StatCard';
@@ -11,11 +11,20 @@ import { RoadStatusCard } from '@/components/feature/RoadStatusCard';
 import { IncidentCard } from '@/components/feature/IncidentCard';
 import { useTraffic } from '@/hooks/useTraffic';
 import { Colors, FontSize, FontWeight, Radius, Spacing } from '@/constants/theme';
-import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import MapView, { Marker, Polyline, UrlTile, PROVIDER_DEFAULT } from 'react-native-maps';
+import { MaterialIcons } from '@expo/vector-icons';
 
-function LiveMapPlaceholder() {
-  const { simulation, vehicles } = useTraffic();
+const MAP_TILES = {
+  dark: 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+  osm: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+};
+
+const CITY_CENTER = { latitude: 11.005, longitude: 77.008, latitudeDelta: 0.045, longitudeDelta: 0.045 };
+
+function DashboardLiveMap() {
+  const router = useRouter();
+  const { roads, incidents, vehicles, signals, simulation } = useTraffic();
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -29,60 +38,85 @@ function LiveMapPlaceholder() {
     }
   }, [simulation.ambulanceDeployed, simulation.greenCorridorActive]);
 
+  const activeVehicles = vehicles.filter(v => v.status !== 'STANDBY');
+  const activeIncidents = incidents.filter(i => i.status === 'ACTIVE');
+
   return (
     <View style={mapStyles.container}>
-      <Image
-        source={require('@/assets/images/hero_map.png')}
-        style={mapStyles.mapImage}
-        contentFit="cover"
-        transition={300}
-      />
-      <View style={mapStyles.overlay}>
-        {/* Road Status Indicators */}
-        <View style={mapStyles.roadRow}>
-          <View style={[mapStyles.roadChip, { borderColor: Colors.red }]}>
-            <Text style={[mapStyles.roadText, { color: Colors.red }]}>🔴 Avinashi Rd</Text>
-          </View>
-          <View style={[mapStyles.roadChip, { borderColor: Colors.yellow }]}>
-            <Text style={[mapStyles.roadText, { color: Colors.yellow }]}>🟡 Trichy Rd</Text>
-          </View>
-        </View>
+      {/* Real Map View */}
+      <MapView
+        style={mapStyles.map}
+        initialRegion={CITY_CENTER}
+        showsUserLocation={false}
+        zoomEnabled={true}
+        scrollEnabled={false}
+        mapType="none"
+        provider={PROVIDER_DEFAULT}
+      >
+        <UrlTile
+          urlTemplate={MAP_TILES.dark}
+          maximumZ={19}
+          flipY={false}
+          zIndex={-1}
+        />
 
-        {/* Center Map View */}
-        <View style={mapStyles.center}>
-          {simulation.accidentTriggered ? (
-            <View style={mapStyles.incidentMarker}>
-              <Text style={mapStyles.markerEmoji}>🚨</Text>
-              <Text style={mapStyles.markerLabel}>Junction 4</Text>
+        {/* Roads Polyline */}
+        {roads.map(road => (
+          <Polyline
+            key={road.id}
+            coordinates={[
+              { latitude: road.fromLat, longitude: road.fromLng },
+              { latitude: road.toLat, longitude: road.toLng },
+            ]}
+            strokeColor={road.status === 'CRITICAL' ? Colors.red : road.status === 'HIGH' ? Colors.orange : Colors.green}
+            strokeWidth={3}
+          />
+        ))}
+
+        {/* Incidents */}
+        {activeIncidents.map(incident => (
+          <Marker key={incident.id} coordinate={{ latitude: incident.lat, longitude: incident.lng }} anchor={{ x: 0.5, y: 0.5 }}>
+            <View style={mapStyles.incidentDot}>
+              <Text style={mapStyles.emojiSmall}>🚨</Text>
             </View>
-          ) : null}
+          </Marker>
+        ))}
 
-          {simulation.greenCorridorActive ? (
-            <View style={mapStyles.corridorPath}>
-              <Text style={mapStyles.corridorEmoji}>🟢━━🟢━━🟢</Text>
-              <Text style={mapStyles.corridorLabel}>GREEN CORRIDOR ACTIVE</Text>
-            </View>
-          ) : null}
-
-          {(simulation.ambulanceDeployed || simulation.scenarioStep >= 3) ? (
+        {/* Ambulances */}
+        {activeVehicles.map(vehicle => (
+          <Marker key={vehicle.id} coordinate={{ latitude: vehicle.lat, longitude: vehicle.lng }} anchor={{ x: 0.5, y: 0.5 }}>
             <Animated.View style={[mapStyles.ambulanceMarker, { transform: [{ scale: pulseAnim }] }]}>
-              <Text style={mapStyles.ambulanceEmoji}>🚑</Text>
-              <Text style={mapStyles.ambulanceLabel}>AMB-001</Text>
+              <Text style={mapStyles.emojiSmall}>🚑</Text>
             </Animated.View>
-          ) : null}
-        </View>
+          </Marker>
+        ))}
 
         {/* Hospital */}
-        <View style={mapStyles.hospitalChip}>
-          <Text style={mapStyles.roadText}>🏥 Govt Hospital</Text>
-        </View>
+        <Marker coordinate={{ latitude: 11.0100, longitude: 77.0155 }} anchor={{ x: 0.5, y: 0.5 }}>
+          <View style={mapStyles.hospitalMarker}>
+            <Text style={mapStyles.emojiSmall}>🏥</Text>
+          </View>
+        </Marker>
+      </MapView>
 
-        {/* Live Indicator */}
-        <View style={mapStyles.liveChip}>
+      {/* Top Banner Overlay */}
+      <View style={mapStyles.topOverlay}>
+        <View style={mapStyles.liveBadge}>
           <View style={mapStyles.liveDot} />
-          <Text style={mapStyles.liveText}>LIVE MAP</Text>
+          <Text style={mapStyles.liveText}>LIVE CITY MAP</Text>
         </View>
+        {simulation.greenCorridorActive && (
+          <View style={mapStyles.corridorBadge}>
+            <Text style={mapStyles.corridorText}>🟢 CORRIDOR ACTIVE</Text>
+          </View>
+        )}
       </View>
+
+      {/* Bottom Action Button */}
+      <Pressable onPress={() => router.push('/(tabs)/live-traffic')} style={mapStyles.bottomOverlay}>
+        <Text style={mapStyles.fullMapButtonText}>VIEW FULL INTERACTIVE MAP</Text>
+        <MaterialIcons name="arrow-forward" size={16} color="#fff" />
+      </Pressable>
     </View>
   );
 }
@@ -150,14 +184,14 @@ export default function Dashboard() {
           />
         </View>
 
-        {/* Live Map */}
+        {/* Live Map Card */}
         <SectionHeader
           title="Live Traffic Map"
-          subtitle="Real-time city overview"
+          subtitle="Real-time city overview & signals"
           actionLabel="Full Map →"
           onAction={() => router.push('/(tabs)/live-traffic')}
         />
-        <LiveMapPlaceholder />
+        <DashboardLiveMap />
 
         {/* Simulation Panel */}
         <SimulationPanel />
@@ -216,58 +250,103 @@ export default function Dashboard() {
 
 const mapStyles = StyleSheet.create({
   container: {
-    height: 220,
+    height: 240,
     borderRadius: Radius.lg,
     overflow: 'hidden',
     marginBottom: Spacing.base,
     borderWidth: 1,
     borderColor: Colors.border,
+    position: 'relative',
+    backgroundColor: '#0a0c10',
   },
-  mapImage: { ...StyleSheet.absoluteFillObject },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(10,12,16,0.55)',
-    padding: Spacing.md,
+  map: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  topOverlay: {
+    position: 'absolute',
+    top: Spacing.sm,
+    left: Spacing.sm,
+    right: Spacing.sm,
+    flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    zIndex: 2,
   },
-  roadRow: { flexDirection: 'row', gap: Spacing.sm },
-  roadChip: {
-    backgroundColor: 'rgba(10,12,16,0.7)',
-    borderWidth: 1,
-    borderRadius: Radius.full,
+  liveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(10,12,16,0.85)',
     paddingHorizontal: Spacing.sm,
-    paddingVertical: 3,
-  },
-  roadText: { fontSize: FontSize.xs, fontWeight: '700' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: Spacing.sm },
-  incidentMarker: { alignItems: 'center', backgroundColor: 'rgba(239,68,68,0.2)', padding: Spacing.sm, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.red },
-  markerEmoji: { fontSize: 24 },
-  markerLabel: { fontSize: 10, color: Colors.red, fontWeight: '700' },
-  corridorPath: { alignItems: 'center', gap: 2 },
-  corridorEmoji: { fontSize: 18 },
-  corridorLabel: { fontSize: 9, color: Colors.green, fontWeight: '800', letterSpacing: 1 },
-  ambulanceMarker: { alignItems: 'center' },
-  ambulanceEmoji: { fontSize: 32 },
-  ambulanceLabel: { fontSize: 10, color: Colors.emergency, fontWeight: '700' },
-  hospitalChip: {
-    alignSelf: 'flex-end',
-    backgroundColor: 'rgba(10,12,16,0.7)',
+    paddingVertical: 4,
+    borderRadius: Radius.full,
     borderWidth: 1,
-    borderColor: Colors.green,
-    borderRadius: Radius.full,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 3,
-  },
-  liveChip: {
-    position: 'absolute', top: Spacing.md, right: Spacing.md,
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: 'rgba(10,12,16,0.8)',
-    paddingHorizontal: 8, paddingVertical: 4,
-    borderRadius: Radius.full,
-    borderWidth: 1, borderColor: Colors.green,
+    borderColor: Colors.border,
   },
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.green },
-  liveText: { fontSize: 9, fontWeight: '800', color: Colors.green, letterSpacing: 0.8 },
+  liveText: { fontSize: 9, fontWeight: '800', color: Colors.textPrimary, letterSpacing: 0.8 },
+  corridorBadge: {
+    backgroundColor: '#064e3b',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: Colors.green,
+  },
+  corridorText: { fontSize: 9, fontWeight: '800', color: Colors.green },
+  bottomOverlay: {
+    position: 'absolute',
+    bottom: Spacing.sm,
+    left: Spacing.sm,
+    right: Spacing.sm,
+    backgroundColor: 'rgba(17,21,32,0.92)',
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: Radius.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.xs,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    zIndex: 2,
+  },
+  fullMapButtonText: { fontSize: 11, fontWeight: '800', color: '#fff', letterSpacing: 0.8 },
+  incidentDot: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: Colors.red,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#fff',
+  },
+  ambulanceMarker: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: Colors.emergency,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  hospitalMarker: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: Colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: Colors.green,
+  },
+  emojiSmall: { fontSize: 12 },
 });
 
 const styles = StyleSheet.create({
@@ -275,43 +354,62 @@ const styles = StyleSheet.create({
   cityStatus: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: Spacing.md,
+    gap: Spacing.md,
+    padding: Spacing.base,
     borderRadius: Radius.lg,
     borderWidth: 1,
-    gap: Spacing.sm,
   },
-  cityStatusNormal: { backgroundColor: Colors.greenBg, borderColor: `${Colors.green}44` },
-  cityStatusWarning: { backgroundColor: Colors.yellowBg, borderColor: `${Colors.yellow}44` },
-  cityStatusCritical: { backgroundColor: Colors.redBg, borderColor: `${Colors.red}44` },
-  cityStatusIcon: { fontSize: 24 },
-  cityStatusText: { flex: 1 },
-  cityStatusTitle: { fontSize: FontSize.base, fontWeight: FontWeight.bold, color: Colors.textPrimary, letterSpacing: 0.5 },
-  cityStatusSub: { fontSize: FontSize.xs, color: Colors.textSecondary, marginTop: 2 },
+  cityStatusNormal: {
+    backgroundColor: '#22c55e12',
+    borderColor: '#22c55e33',
+  },
+  cityStatusWarning: {
+    backgroundColor: '#f59e0b12',
+    borderColor: '#f59e0b33',
+  },
+  cityStatusCritical: {
+    backgroundColor: '#ef444415',
+    borderColor: '#ef444444',
+  },
+  cityStatusIcon: { fontSize: 28 },
+  cityStatusText: { flex: 1, gap: 2 },
+  cityStatusTitle: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.bold,
+    color: Colors.textPrimary,
+    letterSpacing: 0.8,
+  },
+  cityStatusSub: { fontSize: FontSize.xs, color: Colors.textSecondary },
   alertDot: {
     backgroundColor: Colors.red,
-    width: 22, height: 22, borderRadius: 11,
-    justifyContent: 'center', alignItems: 'center',
+    borderRadius: Radius.full,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 5,
   },
-  alertDotText: { fontSize: 10, fontWeight: '800', color: '#fff' },
+  alertDotText: { fontSize: 10, fontWeight: 'bold', color: '#fff' },
   statsRow: { flexDirection: 'row', gap: Spacing.sm },
   quickActions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   quickBtn: {
-    width: '30%',
-    flex: 1,
-    minWidth: 90,
-    alignItems: 'center',
+    width: '31%',
     backgroundColor: Colors.surfaceElevated,
     borderRadius: Radius.md,
     padding: Spacing.md,
+    alignItems: 'center',
     gap: Spacing.xs,
     borderWidth: 1,
     borderColor: Colors.border,
   },
   quickIcon: {
-    width: 44, height: 44, borderRadius: 22,
-    justifyContent: 'center', alignItems: 'center',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   quickEmoji: { fontSize: 22 },
-  quickLabel: { fontSize: 11, color: Colors.textSecondary, fontWeight: FontWeight.semibold, textAlign: 'center' },
-  bottomSpace: { height: Spacing.xl },
+  quickLabel: { fontSize: FontSize.xs, color: Colors.textSecondary, fontWeight: FontWeight.medium },
+  bottomSpace: { height: 40 },
 });
